@@ -18,7 +18,7 @@ type App struct {
 }
 
 func NewApp(cfg *config.Config) (*App, error) {
-	initCtx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
+	initCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	database, err := db.ConnectDB(initCtx, cfg.DatabaseURL)
@@ -29,14 +29,14 @@ func NewApp(cfg *config.Config) (*App, error) {
 	// server address
 	serverAddr := fmt.Sprintf(":%s", cfg.ServerPort)
 	server := &http.Server{
-		Addr: serverAddr,
+		Addr:         serverAddr,
 		ReadTimeout:  10 * time.Second, // Timeout for reading request headers & body
 		WriteTimeout: 10 * time.Second, // Timeout for writing response
 		IdleTimeout:  time.Minute,      // Timeout for keep-alive connections
 	}
 
 	app := &App{
-		server: server,
+		server:   server,
 		database: database,
 	}
 

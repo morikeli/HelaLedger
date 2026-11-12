@@ -221,4 +221,23 @@ func (r *PostgresTransactionRepository) Transact(ctx context.Context, txnParams 
 		return nil, false, fmt.Errorf("create transfer postings: %w", err)
 	}
 
+	// validate transaction uuid is valid
+	if !transactionID.Valid {
+		return nil, false, errors.New("invalid transaction ID returned by database")
+	}
+
+	// Convert PostgreSQL UUID to string.
+	txIDStr := transactionID.String()
+
+	// Prepare domain transaction result.
+	result := &domain.TransactionResults{
+		Status:        "COMPLETED",
+		TransactionID: txIDStr,
+		ReferenceID:   referenceID,
+		Amount:        txnParams.Amount,
+		Currency:      txnParams.Currency,
+	}
+
+	return result, false, nil
+
 }

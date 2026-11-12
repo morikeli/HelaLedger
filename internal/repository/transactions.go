@@ -175,4 +175,15 @@ func (r *PostgresTransactionRepository) Transact(ctx context.Context, txnParams 
 		return nil, false, ErrBalanceOverflow
 	}
 
+	// create transaction record
+	referenceID := "REF-#" + uuid.New().String()
+	transactionID, err := qtx.CreateTransferTransaction(ctx, store.CreateTransferTransactionParams{
+		ReferenceID: referenceID,
+		Amount:      txnParams.Amount,
+		Currency:    txnParams.Currency,
+	})
+	if err != nil {
+		return nil, false, fmt.Errorf("create transfer transaction: %w", err)
+	}
+
 }

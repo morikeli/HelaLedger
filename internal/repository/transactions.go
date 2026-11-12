@@ -241,3 +241,37 @@ func (r *PostgresTransactionRepository) Transact(ctx context.Context, txnParams 
 	return result, false, nil
 
 }
+
+func listWalletTransactions(ctx context.Context, q *store.Queries, walletID pgtype.UUID, limit int, cursor string) (*domain.TransactionHistory, error) {
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+
+	postings, err := q.ListPostingsByWalletID(ctx, store.ListPostingsByWalletIDParams{
+		WalletID: walletID,
+		Limit:    int32(limit),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	result := &domain.TransactionHistory{
+		Items: make([]domain.PostingItem, 0, len(postings)),
+	}
+
+	for _, item := range postings {
+		var pID, tID string
+		_ = item.ID.Scan(&pID)
+		_ = item.TransactionID.Scan(&tID)
+
+		result.Items = append(result.Items, domain.PostingItem{
+			PostingID:     pID,
+			TransactionID: tID,
+			Amount:        item.Amount,
+			Direction:     item.Direction,
+			CreatedAt:     item.CreatedAt.Time.UTC().Format(time.RFC3339Nano),
+		})
+	}
+
+	return result, nil
+}

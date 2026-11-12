@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -109,6 +110,37 @@ func (r *PostgresTransactionRepository) Transact(ctx context.Context, txnParams 
 		}
 
 		return &cachedResponse, true, nil
+	}
+
+	// Lock both wallets in a consistent deterministic order to avoid deadlocks
+	walletIDs := []string{txnParams.SourceWalletID, txnParams.DestinationWalletID}
+	sort.Strings(walletIDs)
+
+	srcWallet, err := parseUUID(walletIDs[0])
+	if err != nil {
+		return nil, false, fmt.Errorf("parse source wallet UUID: %w", err)
+	}
+
+	destWallet, err := parseUUID(walletIDs[1])
+	if err != nil {
+		return nil, false, fmt.Errorf("parse destination wallet UUID: %w", err)
+	}
+
+	lockedWallets, err := qtx.LockTransferWallets(ctx, store.LockTransferWalletsParams{Column1: srcWallet, Column2: destWallet})
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "55P03" {
+			// "55P03" corresponds to the PostgreSQL "lock_not_available" error.
+			// This happens when our SET LOCAL lock_timeout expires because
+			// another concurrent request is currently holding a lock on the row.
+			return nil, false, ErrRequestInProgress
+		}
+		return nil, false, fmt.Errorf("lock transfer wallets: %w", err)
+	}
+
+	walletsMap := make(map[string]store.LockTransferWalletsRow, len(lockedWallets))
+	for _, w := range lockedWallets {
+		walletsMap[w.ID] = w
 	}
 
 }

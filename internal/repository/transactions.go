@@ -1,10 +1,23 @@
 package repository
 
 import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/morikeli/helapay-api/internal/db/store"
+	"github.com/morikeli/helapay-api/internal/domain"
+	"github.com/morikeli/helapay-api/internal/pkg/hashutil"
 )
 
-type TransactionRepository interface{}
+type TransactionRepository interface {
+	Transact(context.Context, domain.TransactionParams) (*domain.TransactionResults, bool, error)
+}
 
 type PostgresTransactionRepository struct{ pool *pgxpool.Pool }
 
@@ -17,4 +30,85 @@ func parseUUID(s string) (pgtype.UUID, error) {
 	var u pgtype.UUID
 	err := u.Scan(s)
 	return u, err
+}
+
+func (r *PostgresTransactionRepository) Transact(ctx context.Context, txnParams domain.TransactionParams) (*domain.TransactionResults, bool, error) {
+	// Validate transaction
+	if txnParams.SourceWalletID == txnParams.DestinationWalletID {
+		return nil, false, ErrInvalidTransfer
+	}
+
+	if txnParams.Amount <= 0 {
+		return nil, false, ErrInvalidTransfer
+	}
+
+	// parse idempotency string into pgtype.UUID
+	idempotencyUUID, err := parseUUID(txnParams.IdempotencyKey)
+	if err != nil {
+		return nil, false, fmt.Errorf("invalid idempotency key format: %w", err)
+	}
+
+	hash, err := hashutil.HashPayload(txnParams)
+	if err != nil {
+		return nil, false, fmt.Errorf("generate payload hash: %w", err)
+	}
+
+	// begin db transaction
+	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
+	if err != nil {
+		return nil, false, fmt.Errorf("begin transaction: %w", err)
+	}
+
+	// rollback if transaction hasn't been committed
+	defer func() {
+		_ = tx.Rollback(context.Background())
+	}()
+
+	// Bind sqlc queries to the active transaction
+	qtx := store.New(tx)
+
+	// configure db lock timeout
+	if _, err := tx.Exec(ctx, `SET LOCAL timeout = '1500ms'`); err != nil {
+		return nil, false, fmt.Errorf("set lock timeout: %w", err)
+	}
+
+	// atomically claim idempotency key
+	rowsAffected, err := qtx.ClaimIdempotencyKey(ctx, store.ClaimIdempotencyKeyParams{IdempotencyKey: idempotencyUUID, PayloadHash: hash})
+	if err != nil {
+		var pgErr *pgconn.PgError
+
+		if errors.As(err, &pgErr) && pgErr.Code == "55P03" {
+			return nil, false, ErrRequestInProgress
+		}
+
+		return nil, false, fmt.Errorf("claim idempotency key: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		existing, err := qtx.GetIdempotencyKey(ctx, idempotencyUUID)
+		if err != nil {
+			return nil, false, fmt.Errorf("retrieve idempotency record: %w", err)
+		}
+
+		if existing.PayloadHash != hash {
+			return nil, false, ErrIdempotencyConflict
+		}
+
+		if existing.Status != "COMPLETED" || !existing.ResponseStatus.Valid || len(existing.ResponseBody) == 0 {
+			return nil, false, ErrRequestInProgress
+		}
+
+		// handle idempotent retry - network timeout or connection drop
+		var cachedResponse domain.TransactionResults
+		if err := json.Unmarshal(existing.ResponseBody, &cachedResponse); err != nil {
+			return nil, false, fmt.Errorf("decode cached response: %w", err)
+		}
+
+		if err := tx.Commit(ctx); err != nil {
+			return nil, false, fmt.Errorf("commit replay transaction: %w", err)
+		}
+
+		return &cachedResponse, true, nil
+	}
+
 }

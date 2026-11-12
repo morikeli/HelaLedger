@@ -210,4 +210,15 @@ func (r *PostgresTransactionRepository) Transact(ctx context.Context, txnParams 
 		return nil, false, ErrInsufficientFunds
 	}
 
+	// create a double-entry ledger transaction
+	err = qtx.CreateTransferPostings(ctx, store.CreateTransferPostingsParams{
+		TransactionID: transactionID,
+		WalletID:      creditorUUID,
+		Amount:        txnParams.Amount,
+		WalletID_2:    debtorUUID,
+	})
+	if err != nil {
+		return nil, false, fmt.Errorf("create transfer postings: %w", err)
+	}
+
 }

@@ -6,9 +6,7 @@ type TransactionService struct {
 	transactionRepository repository.TransactionRepository
 }
 
-func NewTransactionService(transactionRepo repository.TransactionRepository) *TransactionService {
-	return &TransactionService{
-		TransactionService: transactionRepo,
-	}
+func NewTransactionService(txnRepo repository.TransactionRepository) *TransactionService {
+	return &TransactionService{transactionRepository: txnRepo}
 }
 

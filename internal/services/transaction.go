@@ -3,7 +3,7 @@ package services
 import "github.com/morikeli/helapay-api/internal/repository"
 
 type TransactionService struct {
-	TransactionService repository.TransactionRepository
+	transactionRepository repository.TransactionRepository
 }
 
 func NewTransactionService(transactionRepo repository.TransactionRepository) *TransactionService {

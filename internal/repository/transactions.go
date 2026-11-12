@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"sort"
 
 	"github.com/jackc/pgx/v5"
@@ -141,6 +142,37 @@ func (r *PostgresTransactionRepository) Transact(ctx context.Context, txnParams 
 	walletsMap := make(map[string]store.LockTransferWalletsRow, len(lockedWallets))
 	for _, w := range lockedWallets {
 		walletsMap[w.ID] = w
+	}
+
+	creditor, creditorExists := walletsMap[txnParams.SourceWalletID]
+	debtor, debtorExists := walletsMap[txnParams.DestinationWalletID]
+
+	if !creditorExists || !debtorExists {
+		return nil, false, ErrWalletNotFound
+	}
+
+	// validate wallet status
+	if creditor.Status != "ACTIVE" || debtor.Status != "ACTIVE" {
+		return nil, false, ErrWalletInactive
+	}
+
+	// validate currency
+	if creditor.Currency != txnParams.Currency || debtor.Currency != txnParams.Currency {
+		return nil, false, ErrCurrencyMismatch
+	}
+
+	// validate available balance
+	if creditor.Balance < txnParams.Amount {
+		return nil, false, ErrInsufficientFunds
+	}
+
+	// prevent integer overflow when crediting debtor (reciever)
+	//
+	// If a destination wallet's balance is already very large, adding the transfer amount could exceed
+	// this maximum limit. In computer systems, exceeding the integer limit causes an integer overflow,
+	// which wraps the number around into a negative value, corrupting financial records.
+	if debtor.Balance > math.MaxInt64-txnParams.Amount {
+		return nil, false, ErrBalanceOverflow
 	}
 
 }

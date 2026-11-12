@@ -87,6 +87,7 @@ func (r *PostgresTransactionRepository) MakeTransaction(ctx context.Context, txn
 		return nil, false, fmt.Errorf("claim idempotency key: %w", err)
 	}
 
+	// handle previously submitted payment requests
 	if rowsAffected == 0 {
 		existing, err := qtx.GetIdempotencyKey(ctx, idempotencyUUID)
 		if err != nil {

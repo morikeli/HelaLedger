@@ -19,7 +19,7 @@ import (
 )
 
 type TransactionRepository interface {
-	Transact(context.Context, domain.TransactionParams) (*domain.TransactionResults, bool, error)
+	MakeTransaction(context.Context, domain.TransactionParams) (*domain.TransactionResults, bool, error)
 }
 
 type PostgresTransactionRepository struct{ pool *pgxpool.Pool }
@@ -35,7 +35,7 @@ func parseUUID(s string) (pgtype.UUID, error) {
 	return u, err
 }
 
-func (r *PostgresTransactionRepository) Transact(ctx context.Context, txnParams domain.TransactionParams) (*domain.TransactionResults, bool, error) {
+func (r *PostgresTransactionRepository) MakeTransaction(ctx context.Context, txnParams domain.TransactionParams) (*domain.TransactionResults, bool, error) {
 	// Validate transaction
 	if txnParams.SourceWalletID == txnParams.DestinationWalletID {
 		return nil, false, ErrInvalidTransfer

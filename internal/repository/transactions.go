@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"uuid"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -195,5 +196,18 @@ func (r *PostgresTransactionRepository) Transact(ctx context.Context, txnParams 
 		return nil, false, fmt.Errorf("parse debtor UUID: %w", err)
 	}
 
+	// Deduct creditor wallet
+	debitRows, err := qtx.DebitWallet(ctx, store.DebitWalletParams{
+		Balance: txnParams.Amount,
+		ID:      creditorUUID,
+	})
+	if err != nil {
+		return nil, false, fmt.Errorf("debit source wallet: %w", err)
+	}
+	// On a successful debit, PostgreSQL successfully updates the row and returns 1
+	// If the wallet has insufficient funds, the condition fails and returns 0
+	if debitRows != 1 {
+		return nil, false, ErrInsufficientFunds
+	}
 
 }

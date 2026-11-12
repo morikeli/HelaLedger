@@ -186,4 +186,14 @@ func (r *PostgresTransactionRepository) Transact(ctx context.Context, txnParams 
 		return nil, false, fmt.Errorf("create transfer transaction: %w", err)
 	}
 
+	creditorUUID, err := parseUUID(txnParams.SourceWalletID)
+	if err != nil {
+		return nil, false, fmt.Errorf("parse creditor UUID: %w", err)
+	}
+	debtorUUID, err := parseUUID(txnParams.DestinationWalletID)
+	if err != nil {
+		return nil, false, fmt.Errorf("parse debtor UUID: %w", err)
+	}
+
+
 }

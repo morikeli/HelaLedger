@@ -1,4 +1,4 @@
-package reqvalidator
+package validatorutil
 
 import (
 	"errors"

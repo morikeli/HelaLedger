@@ -4,9 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 
+	"github.com/go-chi/chi/v5"
+	chiMW "github.com/go-chi/chi/v5/middleware"
 	"github.com/morikeli/helapay-api/internal/dtos/requests"
 	"github.com/morikeli/helapay-api/internal/dtos/responses"
 	"github.com/morikeli/helapay-api/internal/models"
@@ -76,6 +79,7 @@ func (h *TransactionHandler) CreateTransactionHandler(w http.ResponseWriter, r *
 	// execute transfer
 	result, isReplay, err := h.service.TransactFunds(ctx, params)
 	if err != nil {
+		slog.Warn("wallet transfer rejected", "request_id", chiMW.GetReqID(r.Context()), "error", err.Error())
 		handleServiceError(w, err)
 		return
 	}
@@ -87,6 +91,7 @@ func (h *TransactionHandler) CreateTransactionHandler(w http.ResponseWriter, r *
 		Currency:      result.Currency,
 	}
 
+	slog.Info("wallet transfer completed", "request_id", chiMW.GetReqID(r.Context()), "transaction_id", result.TransactionID, "reference_id", result.ReferenceID, "amount_minor", result.Amount, "currency", result.Currency, "replayed", isReplay)
 	statusCode := http.StatusCreated
 	if isReplay {
 		statusCode = http.StatusOK

@@ -73,7 +73,7 @@ func (r *PostgresTransactionRepository) MakeTransaction(ctx context.Context, txn
 	qtx := store.New(tx)
 
 	// configure db lock timeout
-	if _, err := tx.Exec(ctx, `SET LOCAL timeout = '1500ms'`); err != nil {
+	if _, err := tx.Exec(ctx, `SET LOCAL lock_timeout = '1500ms'`); err != nil {
 		return nil, false, fmt.Errorf("set lock timeout: %w", err)
 	}
 

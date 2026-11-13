@@ -39,6 +39,12 @@ func (h *TransactionHandler) CreateTransactionHandler(w http.ResponseWriter, r *
 	// limit request body size
 	payloadutil.LimitJSONBody(w, r)
 
+	idempotencyKey := r.Header.Get("Idempotency-Key")
+	if idempotencyKey == "" {
+		responses.Error(w, http.StatusBadRequest, "Missing Idempotency-Key header!")
+		return
+	}
+
 	// decode request using strict JSON
 	var req requests.TransactionRequestDTO
 	decoder := json.NewDecoder(r.Body)
@@ -70,7 +76,7 @@ func (h *TransactionHandler) CreateTransactionHandler(w http.ResponseWriter, r *
 	// map request DTO to domain aprameters
 	// normalize uuid casing so semantically identical payloads hash indentically
 	params := models.TransactionParams{
-		IdempotencyKey:      strings.ToLower(req.IdempotencyKey),
+		IdempotencyKey:      strings.ToLower(idempotencyKey),
 		SourceWalletID:      strings.ToLower(req.SourceWalletID),
 		DestinationWalletID: strings.ToLower(req.DestinationWalletID),
 		Amount:              req.Amount,

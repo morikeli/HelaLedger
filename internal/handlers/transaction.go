@@ -1,0 +1,96 @@
+package handlers
+
+import (
+	"encoding/json"
+	"errors"
+	"io"
+	"net/http"
+	"strings"
+
+	"github.com/morikeli/helapay-api/internal/dtos/requests"
+	"github.com/morikeli/helapay-api/internal/dtos/responses"
+	"github.com/morikeli/helapay-api/internal/models"
+	"github.com/morikeli/helapay-api/internal/pkg/payloadutil"
+	"github.com/morikeli/helapay-api/internal/pkg/validatorutil"
+	"github.com/morikeli/helapay-api/internal/services"
+)
+
+type TransactionHandler struct {
+	service *services.TransactionService
+}
+
+func NewTransactionHandler(service *services.TransactionService) *TransactionHandler {
+	return &TransactionHandler{service: service}
+}
+
+func (h *TransactionHandler) CreateTransactionHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	// validate content type
+	if err := validatorutil.ValidateJSONContentType(r); err != nil {
+		responses.Error(w, http.StatusUnsupportedMediaType, err.Error())
+		return
+	}
+
+	// limit request body size
+	payloadutil.LimitJSONBody(w, r)
+
+	// decode request using strict JSON
+	var req requests.TransactionRequestDTO
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+
+	if err := decoder.Decode(&req); err != nil {
+		if payloadutil.IsRequestBodyTooLarge(err) {
+			responses.Error(w, http.StatusRequestEntityTooLarge, "Request body too large!")
+			return
+		}
+
+		responses.Error(w, http.StatusBadRequest, "Invalid JSON request body!")
+		return
+	}
+
+	// ensure body contains one JSON payload
+	var extra json.RawMessage
+	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
+		responses.Error(w, http.StatusBadRequest, "Request body must contain a single JSON object!")
+		return
+	}
+
+	// validate request fields
+	if err := validatorutil.ValidateRequest(&req); err != nil {
+		responses.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	// map request DTO to domain aprameters
+	// normalize uuid casing so semantically identical payloads hash indentically
+	params := models.TransactionParams{
+		IdempotencyKey:      strings.ToLower(req.IdempotencyKey),
+		SourceWalletID:      strings.ToLower(req.SourceWalletID),
+		DestinationWalletID: strings.ToLower(req.DestinationWalletID),
+		Amount:              req.Amount,
+		Currency:            req.Currency,
+	}
+
+	// execute transfer
+	result, isReplay, err := h.service.TransactFunds(ctx, params)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	response := responses.TransactionResponseDTO{
+		Status:        result.Status,
+		TransactionID: result.TransactionID,
+		Amount:        result.Amount,
+		Currency:      result.Currency,
+	}
+
+	statusCode := http.StatusCreated
+	if isReplay {
+		statusCode = http.StatusOK
+	}
+
+	responses.Success(w, statusCode, "Cash tranacted successfully!", response)
+}

@@ -23,6 +23,7 @@ type TransactionRepository interface {
 	MakeTransaction(context.Context, models.TransactionParams) (*models.TransactionResults, bool, error)
 	GetWalletBalance(context.Context, string) (*models.WalletBalance, error)
 	ListWalletTransactions(context.Context, string, int, string) (*models.TransactionHistory, error)
+	CheckLedgerBalance(context.Context) (bool, error)
 }
 
 type PostgresTransactionRepository struct{ pool *pgxpool.Pool }
@@ -343,6 +344,30 @@ func (r *PostgresTransactionRepository) ListWalletTransactions(ctx context.Conte
 	}
 
 	return listWalletTransactions(ctx, qtx, wUUID, limit, cursor)
+}
+
+// CheckLedgerBalance returns true if all wallet balances match their ledger postings.
+func (r *PostgresTransactionRepository) CheckLedgerBalance(ctx context.Context) (bool, error) {
+	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = tx.Rollback(context.Background()) }()
+
+	qtx := store.New(tx)
+
+	// return any wallets where balance isn't equal to the ledger sum
+	unbalancedWallets, err := qtx.ReconcileWalletBalances(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return false, err
+	}
+
+	// If the list is empty, the ledger is balanced
+	return len(unbalancedWallets) == 0, nil
 }
 
 func listWalletTransactions(ctx context.Context, q *store.Queries, walletID pgtype.UUID, limit int, cursor string) (*models.TransactionHistory, error) {

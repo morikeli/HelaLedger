@@ -29,3 +29,8 @@ func (s *TransactionService) WalletBalance(ctx context.Context, walletID string)
 func (s *TransactionService) TransactionHistory(ctx context.Context, walletID string, limit int, cursor string) (*models.TransactionHistory, error) {
 	return s.transactionRepository.ListWalletTransactions(ctx, walletID, limit, cursor)
 }
+
+// Verify ledger consistency
+func (s *TransactionService) IsLedgerBalanced(ctx context.Context) (bool, error) {
+	return s.transactionRepository.CheckLedgerBalance(ctx)
+}

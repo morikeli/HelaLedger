@@ -98,7 +98,7 @@ func (h *TransactionHandler) CreateTransactionHandler(w http.ResponseWriter, r *
 		statusCode = http.StatusOK
 	}
 
-	responses.Success(w, statusCode, "Cash tranacted successfully!", response)
+	responses.Success(w, statusCode, "Cash transacted successfully!", response)
 }
 
 func (h *TransactionHandler) GetWalletBalanceHandler(w http.ResponseWriter, r *http.Request) {

@@ -26,7 +26,7 @@ type TransactionRepository interface {
 
 type PostgresTransactionRepository struct{ pool *pgxpool.Pool }
 
-func NewPostgresTransactionRepository(pool *pgxpool.Pool) *PostgresTransactionRepository {
+func NewTransactionRepository(pool *pgxpool.Pool) *PostgresTransactionRepository {
 	return &PostgresTransactionRepository{pool: pool}
 }
 

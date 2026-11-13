@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -117,4 +118,33 @@ func (h *TransactionHandler) GetWalletBalanceHandler(w http.ResponseWriter, r *h
 	}
 
 	responses.Success(w, http.StatusOK, "Wallet balance retrieved successfully!", result)
+}
+
+func (h *TransactionHandler) GetTransactionHistoryHandler(w http.ResponseWriter, r *http.Request) {
+	walletID := chi.URLParam(r, "id")
+	ctx := r.Context()
+
+	// validate wallet UUID
+	if !validatorutil.ValidateUUID(walletID) {
+		responses.Error(w, http.StatusBadRequest, "Wallet ID must be a valid UUID!")
+		return
+	}
+
+	limit := 20
+	if raw := r.URL.Query().Get("limit"); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil || parsed < 1 || parsed > 100 {
+			responses.Error(w, http.StatusBadRequest, "Limit must be between 1 and 100!")
+			return
+		}
+		limit = parsed
+	}
+
+	query := r.URL.Query().Get("cursor")
+	result, err := h.service.TransactionHistory(ctx, walletID, limit, query)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+	responses.Success(w, http.StatusOK, "Wallet transactions retrieved successfully!", result)
 }

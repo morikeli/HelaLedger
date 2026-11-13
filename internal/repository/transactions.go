@@ -14,13 +14,13 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/morikeli/helapay-api/internal/db/store"
-	"github.com/morikeli/helapay-api/internal/domain"
+	"github.com/morikeli/helapay-api/internal/models"
 	"github.com/morikeli/helapay-api/internal/pkg/hashutil"
 )
 
 type TransactionRepository interface {
-	MakeTransaction(context.Context, domain.TransactionParams) (*domain.TransactionResults, bool, error)
-	GetWalletBalance(context.Context, string) (*domain.WalletBalance, error)
+	MakeTransaction(context.Context, models.TransactionParams) (*models.TransactionResults, bool, error)
+	GetWalletBalance(context.Context, string) (*models.WalletBalance, error)
 }
 
 type PostgresTransactionRepository struct{ pool *pgxpool.Pool }
@@ -36,7 +36,7 @@ func parseUUID(s string) (pgtype.UUID, error) {
 	return u, err
 }
 
-func (r *PostgresTransactionRepository) MakeTransaction(ctx context.Context, txnParams domain.TransactionParams) (*domain.TransactionResults, bool, error) {
+func (r *PostgresTransactionRepository) MakeTransaction(ctx context.Context, txnParams models.TransactionParams) (*models.TransactionResults, bool, error) {
 	// Validate transaction
 	if txnParams.SourceWalletID == txnParams.DestinationWalletID {
 		return nil, false, ErrInvalidTransfer
@@ -104,7 +104,7 @@ func (r *PostgresTransactionRepository) MakeTransaction(ctx context.Context, txn
 		}
 
 		// handle idempotent retry - network timeout or connection drop
-		var cachedResponse domain.TransactionResults
+		var cachedResponse models.TransactionResults
 		if err := json.Unmarshal(existing.ResponseBody, &cachedResponse); err != nil {
 			return nil, false, fmt.Errorf("decode cached response: %w", err)
 		}
@@ -232,7 +232,7 @@ func (r *PostgresTransactionRepository) MakeTransaction(ctx context.Context, txn
 	txIDStr := transactionID.String()
 
 	// Prepare domain transaction result.
-	result := &domain.TransactionResults{
+	result := &models.TransactionResults{
 		Status:        "COMPLETED",
 		TransactionID: txIDStr,
 		ReferenceID:   referenceID,
@@ -244,7 +244,7 @@ func (r *PostgresTransactionRepository) MakeTransaction(ctx context.Context, txn
 
 }
 
-func (r *PostgresTransactionRepository) GetWalletBalance(ctx context.Context, walletID string) (*domain.WalletBalance, error) {
+func (r *PostgresTransactionRepository) GetWalletBalance(ctx context.Context, walletID string) (*models.WalletBalance, error) {
 	wUUID, err := parseUUID(walletID)
 	if err != nil {
 		return nil, ErrWalletNotFound
@@ -268,7 +268,7 @@ func (r *PostgresTransactionRepository) GetWalletBalance(ctx context.Context, wa
 
 	idStr := walletRow.ID.String()
 
-	result := &domain.WalletBalance{
+	result := &models.WalletBalance{
 		WalletID: idStr,
 		Balance:  walletRow.Balance,
 		Currency: walletRow.Currency,
@@ -299,8 +299,8 @@ func listWalletTransactions(ctx context.Context, q *store.Queries, walletID pgty
 		return nil, err
 	}
 
-	result := &domain.TransactionHistory{
-		Items: make([]domain.PostingItem, 0, len(postings)),
+	result := &models.TransactionHistory{
+		Items: make([]models.PostingItem, 0, len(postings)),
 	}
 
 	for _, item := range postings {
@@ -308,7 +308,7 @@ func listWalletTransactions(ctx context.Context, q *store.Queries, walletID pgty
 		_ = item.ID.Scan(&pID)
 		_ = item.TransactionID.Scan(&tID)
 
-		result.Items = append(result.Items, domain.PostingItem{
+		result.Items = append(result.Items, models.PostingItem{
 			PostingID:     pID,
 			TransactionID: tID,
 			Amount:        item.Amount,

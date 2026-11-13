@@ -5,11 +5,11 @@ import (
 	"encoding/hex"
 	"encoding/json"
 
-	"github.com/morikeli/helapay-api/internal/domain"
+	"github.com/morikeli/helapay-api/internal/models"
 )
 
 // Generate a deterministic SHA-256 cryptographic fingerprint for a transaction
-func HashPayload(txnData domain.TransactionParams) (string, error) {
+func HashPayload(txnData models.TransactionParams) (string, error) {
 	// create a canonical (normalized) anonymous struct containing only the
 	// essential fields, mapped with explicit lowercase JSON tags
 	canonical := struct {

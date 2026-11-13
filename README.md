@@ -162,7 +162,7 @@ If your operating system supports it, Docker Desktop provides a complete contain
 If you are running **Linux** (e.g., Ubuntu, Debian, Fedora) or a machine where Docker Desktop is not supported, you can install the lightweight **Docker Engine** and **Docker Compose plugin** directly. Follow the official distribution-specific guide to install Docker Engine: [Install Docker Engine Guide](https://docs.docker.com/engine/install/).
 
 
-### Installation & Local Setup
+### Step 2: Local Setup
 
 1. **Clone the repository**
 ```bash
@@ -188,9 +188,16 @@ DATABASE_URL=postgres://<db-user>:<db-password>@<db-host>:<db-port>/<db-name>?ss
 
 3. **Start services via Docker Compose**
 ```bash
-docker-compose up --build -d
+docker compose up --build -d
 ```
-The API will be available at `http://localhost:8080`.
+The API will be available at `http://localhost:8000`.
+
+> [!NOTE]
+> To delete the db, images or containers use:
+> ```bash
+docker compose down -v
+```
+> Rebuild and start the service again using `docker compose up --build`
 
 4. **Run the automated test suite**
 Execute the unit and concurrency integration tests with the Go race detector enabled:

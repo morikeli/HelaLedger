@@ -21,6 +21,7 @@ import (
 type TransactionRepository interface {
 	MakeTransaction(context.Context, models.TransactionParams) (*models.TransactionResults, bool, error)
 	GetWalletBalance(context.Context, string) (*models.WalletBalance, error)
+	ListWalletTransactions(context.Context, string, int, string) (*models.TransactionHistory, error)
 }
 
 type PostgresTransactionRepository struct{ pool *pgxpool.Pool }
@@ -286,7 +287,26 @@ func (r *PostgresTransactionRepository) GetWalletBalance(ctx context.Context, wa
 	return result, nil
 }
 
-func listWalletTransactions(ctx context.Context, q *store.Queries, walletID pgtype.UUID, limit int, cursor string) (*domain.TransactionHistory, error) {
+// fetch paginated results for a specific wallet
+func (r *PostgresTransactionRepository) ListWalletTransactions(ctx context.Context, walletID string, limit int, cursor string) (*models.TransactionHistory, error) {
+	wUUID, err := parseUUID(walletID)
+	if err != nil {
+		return nil, ErrWalletNotFound
+	}
+
+	qtx := store.New(r.pool)
+	_, err = qtx.GetWalletByID(ctx, wUUID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrWalletNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return listWalletTransactions(ctx, qtx, wUUID, limit, cursor)
+}
+
+func listWalletTransactions(ctx context.Context, q *store.Queries, walletID pgtype.UUID, limit int, cursor string) (*models.TransactionHistory, error) {
 	if limit < 1 || limit > 100 {
 		limit = 20
 	}

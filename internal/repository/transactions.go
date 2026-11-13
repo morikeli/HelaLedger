@@ -336,9 +336,8 @@ func listWalletTransactions(ctx context.Context, q *store.Queries, walletID pgty
 	}
 
 	for _, item := range postings {
-		var pID, tID string
-		_ = item.ID.Scan(&pID)
-		_ = item.TransactionID.Scan(&tID)
+		pID := item.ID.String()
+		tID := item.TransactionID.String()
 
 		result.Items = append(result.Items, models.PostingItem{
 			PostingID:     pID,

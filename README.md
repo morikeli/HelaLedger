@@ -73,6 +73,75 @@ Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
 
 ---
 
+#### 3. Get Wallet Transaction History (Paginated)
+`GET /v1/wallets/:id/transactions`
+
+Returns recent transaction for a wallet.
+
+**Query Parameters:**
+
+* `limit` *(optional)*: Number of items to return per page (integer between `1` and `100`, defaults to `20`).
+* `cursor` *(optional)*: Pagination cursor string for fetching subsequent pages.
+
+**Response (`200 OK`):**
+
+```json
+{
+  "status": "success",
+  "message": "Wallet transactions retrieved successfully!",
+  "data": {
+    "transactions": [
+      {
+        "transaction_id": "33333333-3333-3333-3333-333333333333",
+        "amount": 2500,
+        "currency": "KES",
+        "status": "COMPLETED",
+        "created_at": "2026-11-13T19:33:28Z"
+      }
+    ],
+    "next_cursor": "eyJpZCI6...="
+  }
+}
+```
+
+---
+
+#### 4. Check Ledger Double-Entry Balance
+`GET /v1/ledger/check-balance`
+
+Performs a system-wide accounting invariant check to verify that the sum of all debits equals credits across the double-entry ledger.
+
+**Response (`200 OK`):**
+
+```json
+{
+  "status": "success",
+  "message": "Ledger balance status retrieved successfully!",
+  "data": {
+    "is_balanced": true
+  }
+}
+```
+
+---
+
+#### 5. Health Check Probes
+
+##### Liveness Probe
+`GET /health/live`
+* **Description:** Basic check to verify the application process is running.
+* **Response (`200 OK`):** `We are live!`
+
+##### Readiness Probe
+`GET /health/ready`
+* **Description:** Verifies that the API server can successfully ping and communicate with the PostgreSQL database.
+* **Responses:**
+  * `200 OK`: `Ready for take off!`
+  * `503 Service Unavailable`: Database connection failed.
+
+
+---
+
 ## Developer instructions
 ---
 > [!WARNING]

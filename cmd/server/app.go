@@ -16,6 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/morikeli/helapay-api/internal/config"
 	"github.com/morikeli/helapay-api/internal/db"
+	"github.com/morikeli/helapay-api/internal/dtos/responses"
 	"github.com/morikeli/helapay-api/internal/handlers"
 	"github.com/morikeli/helapay-api/internal/repository"
 	"github.com/morikeli/helapay-api/internal/services"
@@ -60,7 +61,7 @@ func NewApp(cfg *config.Config) (*App, error) {
 	})
 	r.Get("/health/ready", func(w http.ResponseWriter, r *http.Request) {
 		if err := database.Ping(r.Context()); err != nil {
-			http.Error(w, "Oops! Service unavailable.", http.StatusServiceUnavailable)
+			responses.Error(w, http.StatusServiceUnavailable, "Database offline, system check failed!")
 			return
 		}
 		w.WriteHeader(http.StatusOK)

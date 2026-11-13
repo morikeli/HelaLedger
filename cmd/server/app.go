@@ -69,6 +69,7 @@ func NewApp(cfg *config.Config) (*App, error) {
 	
 	r.Route("/v1", func(r chi.Router) {
 		r.Post("/transfers", txnHandler.CreateTransactionHandler)
+		r.Get("/ledger/check-balance", txnHandler.CheckLedgerBalanceHandler)
 		r.Get("/wallets/{id}/balance", txnHandler.GetWalletBalanceHandler)
 		r.Get("/wallets/{id}/transactions", txnHandler.GetTransactionHistoryHandler)
 	})

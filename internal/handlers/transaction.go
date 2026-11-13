@@ -99,3 +99,22 @@ func (h *TransactionHandler) CreateTransactionHandler(w http.ResponseWriter, r *
 
 	responses.Success(w, statusCode, "Cash tranacted successfully!", response)
 }
+
+func (h *TransactionHandler) GetWalletBalanceHandler(w http.ResponseWriter, r *http.Request) {
+	walletID := chi.URLParam(r, "id")
+	ctx := r.Context()
+
+	// validate wallet UUID
+	if !validatorutil.ValidateUUID(walletID) {
+		responses.Error(w, http.StatusBadRequest, "Wallet ID must be a valid UUID!")
+		return
+	}
+
+	result, err := h.service.WalletBalance(ctx, walletID)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	responses.Success(w, http.StatusOK, "Wallet balance retrieved successfully!", result)
+}

@@ -20,6 +20,7 @@ import (
 
 type TransactionRepository interface {
 	MakeTransaction(context.Context, domain.TransactionParams) (*domain.TransactionResults, bool, error)
+	GetWalletBalance(context.Context, string) (*domain.WalletBalance, error)
 }
 
 type PostgresTransactionRepository struct{ pool *pgxpool.Pool }
@@ -241,6 +242,48 @@ func (r *PostgresTransactionRepository) MakeTransaction(ctx context.Context, txn
 
 	return result, false, nil
 
+}
+
+func (r *PostgresTransactionRepository) GetWalletBalance(ctx context.Context, walletID string) (*domain.WalletBalance, error) {
+	wUUID, err := parseUUID(walletID)
+	if err != nil {
+		return nil, ErrWalletNotFound
+	}
+
+	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback(context.Background()) }()
+
+	qtx := store.New(tx)
+
+	walletRow, err := qtx.GetWalletByID(ctx, wUUID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrWalletNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	idStr := walletRow.ID.String()
+
+	result := &domain.WalletBalance{
+		WalletID: idStr,
+		Balance:  walletRow.Balance,
+		Currency: walletRow.Currency,
+	}
+
+	history, err := listWalletTransactions(ctx, qtx, wUUID, 10, "")
+	if err != nil {
+		return nil, err
+	}
+	result.RecentTransactions = history.Items
+
+	if err := tx.Commit(ctx); err != nil {
+		return nil, err
+	}
+	return result, nil
 }
 
 func listWalletTransactions(ctx context.Context, q *store.Queries, walletID pgtype.UUID, limit int, cursor string) (*domain.TransactionHistory, error) {

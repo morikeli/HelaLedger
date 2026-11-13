@@ -19,3 +19,8 @@ func NewTransactionService(txnRepo repository.TransactionRepository) *Transactio
 func (s *TransactionService) TransactFunds(ctx context.Context, params models.TransactionParams) (*models.TransactionResults, bool, error) {
 	return s.transactionRepository.MakeTransaction(ctx, params)
 }
+
+// fetch wallet balance and recent transaction
+func (s *TransactionService) WalletBalance(ctx context.Context, walletID string) (*models.WalletBalance, error) {
+	return s.transactionRepository.GetWalletBalance(ctx, walletID)
+}

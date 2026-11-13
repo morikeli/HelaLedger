@@ -195,9 +195,14 @@ The API will be available at `http://localhost:8000`.
 > [!NOTE]
 > To delete the db, images or containers use:
 > ```bash
-docker compose down -v
-```
-> Rebuild and start the service again using `docker compose up --build`
+> docker compose down -v
+> ```
+>
+> Rebuild and start the service again using
+> ```bash
+> docker compose up --build
+> ```
+
 
 4. **Run the automated test suite**
 Execute the unit and concurrency integration tests with the Go race detector enabled:

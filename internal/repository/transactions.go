@@ -224,6 +224,18 @@ func (r *PostgresTransactionRepository) MakeTransaction(ctx context.Context, txn
 		return nil, false, fmt.Errorf("create transfer postings: %w", err)
 	}
 
+	// credit debtor's (destination) wallet
+	creditRows, err := qtx.CreditWallet(ctx, store.CreditWalletParams{
+		Balance: txnParams.Amount,
+		ID:      debtorUUID,
+	})
+	if err != nil {
+		return nil, false, fmt.Errorf("credit destination wallet: %w", err)
+	}
+	if creditRows != 1 {
+		return nil, false, errors.New("failed to credit destination wallet")
+	}
+
 	// validate transaction uuid is valid
 	if !transactionID.Valid {
 		return nil, false, errors.New("invalid transaction ID returned by database")

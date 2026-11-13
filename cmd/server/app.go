@@ -54,7 +54,7 @@ func (a *App) Run(port string) error {
 
 	// Start server in a non-blocking goroutine
 	go func() {
-		slog.Info("Server starting on port %s...\n", "port", port)
+		slog.Info("Server starting on", "port", port)
 		if err := a.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			serverErrors <- err
 		}

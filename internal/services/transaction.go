@@ -24,3 +24,8 @@ func (s *TransactionService) TransactFunds(ctx context.Context, params models.Tr
 func (s *TransactionService) WalletBalance(ctx context.Context, walletID string) (*models.WalletBalance, error) {
 	return s.transactionRepository.GetWalletBalance(ctx, walletID)
 }
+
+// fetch paginated transaction history
+func (s *TransactionService) TransactionHistory(ctx context.Context, walletID string, limit int, cursor string) (*models.TransactionHistory, error) {
+	return s.transactionRepository.ListWalletTransactions(ctx, walletID, limit, cursor)
+}

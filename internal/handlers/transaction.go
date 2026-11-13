@@ -148,3 +148,20 @@ func (h *TransactionHandler) GetTransactionHistoryHandler(w http.ResponseWriter,
 	}
 	responses.Success(w, http.StatusOK, "Wallet transactions retrieved successfully!", result)
 }
+
+func (h *TransactionHandler) CheckLedgerBalanceHandler(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	isBalanced, err := h.service.IsLedgerBalanced(ctx)
+	if err != nil {
+		handleServiceError(w, err)
+		return
+	}
+
+	// Map domain result to HTTP Response DTO
+	response := responses.LedgerStatusResponseDTO{
+		IsBalanced: isBalanced,
+	}
+
+	responses.Success(w, http.StatusOK, "Ledger balance status retrieved successfully!", response)
+}

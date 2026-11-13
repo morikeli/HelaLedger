@@ -12,7 +12,7 @@ func ConnectDB(ctx context.Context, dbURL string) (*pgxpool.Pool, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Please provide a valid database URL! Error: %v \n", err)
 	}
-	
+
 	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create a db connection pool! Error: %w \n", err)

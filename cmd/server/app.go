@@ -66,7 +66,7 @@ func NewApp(cfg *config.Config) (*App, error) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("Ready for take off!\n"))
 	})
-	
+
 	r.Route("/v1", func(r chi.Router) {
 		r.Post("/transfers", txnHandler.CreateTransactionHandler)
 		r.Get("/ledger/check-balance", txnHandler.CheckLedgerBalanceHandler)
@@ -78,7 +78,7 @@ func NewApp(cfg *config.Config) (*App, error) {
 	serverAddr := fmt.Sprintf(":%s", cfg.ServerPort)
 	server := &http.Server{
 		Addr:         serverAddr,
-		Handler: r,
+		Handler:      r,
 		ReadTimeout:  10 * time.Second, // Timeout for reading request headers & body
 		WriteTimeout: 10 * time.Second, // Timeout for writing response
 		IdleTimeout:  time.Minute,      // Timeout for keep-alive connections

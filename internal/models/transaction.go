@@ -18,5 +18,5 @@ type TransactionResults struct {
 
 type TransactionHistory struct {
 	Items      []PostingItem
-	NextCursor string      
+	NextCursor string
 }

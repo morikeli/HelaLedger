@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"time"
 	"uuid"
 
 	"github.com/jackc/pgx/v5"
@@ -251,6 +252,32 @@ func (r *PostgresTransactionRepository) MakeTransaction(ctx context.Context, txn
 		ReferenceID:   referenceID,
 		Amount:        txnParams.Amount,
 		Currency:      txnParams.Currency,
+	}
+
+	// Serialize the domain result for idempotency persistence.
+	responseBody, err := json.Marshal(result)
+	if err != nil {
+		return nil, false, fmt.Errorf("marshal transfer result: %w", err)
+	}
+
+	// Complete idempotency record.
+	respStatus := pgtype.Int4{
+		Int32: 201,
+		Valid: true,
+	}
+
+	err = qtx.CompleteIdempotencyKey(ctx, store.CompleteIdempotencyKeyParams{
+		ResponseStatus: respStatus,
+		ResponseBody:   responseBody,
+		IdempotencyKey: idempotencyUUID,
+	})
+	if err != nil {
+		return nil, false, fmt.Errorf("complete idempotency record: %w", err)
+	}
+
+	// Commit transaction atomically.
+	if err := tx.Commit(ctx); err != nil {
+		return nil, false, fmt.Errorf("commit transfer transaction: %w", err)
 	}
 
 	return result, false, nil

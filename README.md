@@ -204,11 +204,57 @@ The API will be available at `http://localhost:8000`.
 > ```
 
 
-4. **Run the automated test suite**
-Execute the unit and concurrency integration tests with the Go race detector enabled:
+### Step 3: Running Tests
+
+#### 1. Unit Tests
+Unit tests mock external dependencies and do not require a running database. To run only the unit tests across internal packages with the race detector enabled:
 ```bash
-go test -v -race ./...
+go test -v -race ./internal/...
 ```
+
+#### 2. Integration Tests & Test Database Setup
+The integration tests (`./tests/integration`) validate database row-locking, concurrency, and idempotency against a real PostgreSQL instance.
+
+1. **Create the isolated test database**
+   Ensure your Docker database container (`helapay_api_db`) is running, then create the `helapay_test` database using the PostgreSQL user configured in your `.env` file (e.g., `superuser` or `postgres`):
+   ```bash
+   docker exec -it helapay_api_db createdb -U <db-user> helapay_test
+   ```
+
+  > [!TIP]
+  > If you aren't sure which user your container was initialized with, check `POSTGRES_USER` in your `.env` file or run:
+  > ```bash
+  > docker inspect helapay_api_db --format='{{json .Config.Env}}'
+  > ```
+
+2. **Export the test database connection URL**
+   In the terminal session where you plan to run the tests, export `HELAPAY_TEST_DATABASE_URL` pointing to `localhost:5432`:
+   ```bash
+   export HELAPAY_TEST_DATABASE_URL='postgres://<db-user>:<db-password>@localhost:5432/helapay_test?sslmode=disable'
+   ```
+
+3. **Run the integration tests**
+   1. Execute the integration suite with the Go race detector enabled:
+   ```bash
+   go test -v -race ./tests/integration
+   ```
+
+   2. Run the integration tests repeatedly to help expose flaky concurrency behaviour:
+   ```bash
+   go test -v -count=10 ./tests/integration
+   ```
+
+4. **Run the unit tests**
+Run unit test via this command.
+```bash
+go test -v ./internal/handlers ./internal/services
+```
+
+5. **Run the full test suite (Unit + Integration)**
+Once `HELAPAY_TEST_DATABASE_URL` is exported, you can run every test in the repository at once:
+   ```bash
+   go test -v ./...
+   ```
 
 ---
 

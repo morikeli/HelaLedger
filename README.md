@@ -291,6 +291,38 @@ go test -v ./internal/handlers ./internal/services
 
 ---
 
+### Step 4: Generating and Updating Swagger Documentation
+
+This project uses Swaggo (github.com/swaggo/swag) to automatically generate Swagger 2.0 API documentation from code annotations, served interactively via http-swagger/v2.
+
+#### 1. Install the Swag CLI
+
+If you need to generate or update Swagger documentation locally, install the swag command-line tool:
+
+```bash
+go install github.com/swaggo/swag/cmd/swag@latest
+```
+
+_Ensure your $GOPATH/bin or Go binary path is added to your system's PATH._
+
+#### 2. Generate Documentation Files
+
+Whenever you add or modify handler annotations or request/response DTO models, regenerate the Swagger specification files from the root directory of the project using the following command:
+
+```bash
+swag init -g cmd/main.go --dir ./cmd,./internal/handlers,./internal/models,./internal/dtos/responses,./internal/dtos/responses
+```
+
+This parses your main entry point and internal packages (handlers, models, and responses) and updates the files inside the docs/ directory automatically.
+
+#### 3. Accessing Swagger UI
+
+Once your application is running via Docker Compose, open your browser and explore the interactive API documentation at:
+
+http://localhost:8000/swagger/index.html
+
+---
+
 ## Contributions
 
 Contributions are welcome! To contribute to HelaLedger:

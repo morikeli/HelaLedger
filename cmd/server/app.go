@@ -55,10 +55,29 @@ func NewApp(cfg *config.Config) (*App, error) {
 	r.Use(middleware.Timeout(60 * time.Second))
 
 	// handlers
+
+	// HealthCheck handles the basic liveness probe
+	// @Summary      Liveness probe
+	// @Description  Checks if the application is running
+	// @Tags         system
+	// @Accept       json
+	// @Produce      json
+	// @Success      200  {string}  string  "OK"
+	// @Router       /health [get]
 	r.Get("/health/live", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("We are live!\n"))
 	})
+
+	// ReadinessCheck handles the readiness probe
+	// @Summary      Readiness probe
+	// @Description  Checks if the application is ready to accept traffic (e.g., DB connections are up)
+	// @Tags         system
+	// @Accept       json
+	// @Produce      json
+	// @Success      200  {string}  string  "READY"
+	// @Failure      503  {string}  string  "SERVICE UNAVAILABLE"
+	// @Router       /ready [get]
 	r.Get("/health/ready", func(w http.ResponseWriter, r *http.Request) {
 		if err := database.Ping(r.Context()); err != nil {
 			responses.Error(w, http.StatusServiceUnavailable, "Database offline, system check failed!")

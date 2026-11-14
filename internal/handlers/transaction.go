@@ -27,6 +27,17 @@ func NewTransactionHandler(service *services.TransactionService) *TransactionHan
 	return &TransactionHandler{service: service}
 }
 
+// CreateTransaction handles creating a new transaction
+// @Summary      Create a transaction
+// @Description  Creates a new transaction record in the system
+// @Tags         Transactions
+// @Accept       json
+// @Produce      json
+// @Param        request  body      requests.TransactionRequestDTO  true  "Transaction Payload"
+// @Success      201      object    responses.TransactionResponseDTO
+// @Failure      400      object    responses.ErrorResponse
+// @Failure      500      object    responses.ErrorResponse
+// @Router       /transactions [post]
 func (h *TransactionHandler) CreateTransactionHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
@@ -124,6 +135,18 @@ func (h *TransactionHandler) CreateTransactionHandler(w http.ResponseWriter, r *
 	responses.Success(w, statusCode, "Cash transacted successfully!", response)
 }
 
+// GetWalletBalanceHandler handles fetching wallet balance and recent transactions
+// @Summary      Get wallet balance
+// @Description  Retrieves the current balance, currency, and recent transactions for a given wallet ID
+// @Tags         Wallets
+// @Accept       json
+// @Produce      json
+// @Param        id   path      string  true  "Wallet UUID"
+// @Success      200  object    models.WalletBalance
+// @Failure      400  object    responses.ErrorResponse  "Invalid Wallet ID format"
+// @Failure      404  object    responses.ErrorResponse  "Wallet not found"
+// @Failure      500  object    responses.ErrorResponse  "Internal server error"
+// @Router       /wallets/{id}/balance [get]
 func (h *TransactionHandler) GetWalletBalanceHandler(w http.ResponseWriter, r *http.Request) {
 	walletID := chi.URLParam(r, "id")
 	ctx := r.Context()
@@ -143,6 +166,20 @@ func (h *TransactionHandler) GetWalletBalanceHandler(w http.ResponseWriter, r *h
 	responses.Success(w, http.StatusOK, "Wallet balance retrieved successfully!", result)
 }
 
+// GetTransactionHistoryHandler handles fetching paginated transaction history for a wallet
+// @Summary      Get wallet transaction history
+// @Description  Retrieves paginated posting items for a specific wallet using cursor-based pagination
+// @Tags         Wallets
+// @Accept       json
+// @Produce      json
+// @Param        id      path      string  true   "Wallet UUID"
+// @Param        limit   query     int     false  "Number of transactions to return (1-100)" default(20)
+// @Param        cursor  query     string  false  "Pagination cursor for the next page"
+// @Success      200     object    models.TransactionHistory
+// @Failure      400     object    responses.ErrorResponse  "Invalid Wallet ID or limit parameter"
+// @Failure      404     object    responses.ErrorResponse  "Wallet not found"
+// @Failure      500     object    responses.ErrorResponse  "Internal server error"
+// @Router       /wallets/{id}/transactions [get]
 func (h *TransactionHandler) GetTransactionHistoryHandler(w http.ResponseWriter, r *http.Request) {
 	walletID := chi.URLParam(r, "id")
 	ctx := r.Context()
@@ -172,6 +209,15 @@ func (h *TransactionHandler) GetTransactionHistoryHandler(w http.ResponseWriter,
 	responses.Success(w, http.StatusOK, "Wallet transactions retrieved successfully!", result)
 }
 
+// CheckLedgerBalanceHandler verifies ledger consistency across all wallets
+// @Summary      Verify if the ledger is balanced
+// @Description  Verifies if all wallet balances precisely match their double-entry ledger sum postings
+// @Tags         Ledger
+// @Accept       json
+// @Produce      json
+// @Success      200  object    responses.LedgerStatusResponseDTO
+// @Failure      500  object    responses.ErrorResponse  "Internal server error"
+// @Router       /ledger/check-balance [get]
 func (h *TransactionHandler) CheckLedgerBalanceHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 

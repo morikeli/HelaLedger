@@ -23,6 +23,12 @@ HAVING w.balance <> COALESCE(SUM(CASE WHEN p.direction='CREDIT' THEN p.amount EL
 -- name: DeleteExpiredIdempotencyKeys :exec
 DELETE FROM idempotency_keys WHERE expires_at < NOW() AND status <> 'PROCESSING';
 
+-- Keep claim operation atomic
+-- New key -> inserted and claimed
+-- Existing, unexpired key -> not modified
+-- existing, expired key -> reset and claimed
+-- Incase there are concurrent request using the same active key -> wait for the first request,
+-- then either its completed record or times out
 -- name: ClaimIdempotencyKey :execrows
 INSERT INTO idempotency_keys (
     idempotency_key,
@@ -41,8 +47,8 @@ VALUES (
     NOW() + INTERVAL '24 hours'
 )
 ON CONFLICT (idempotency_key)
-DO UPDATE SET
-    payload_hash = EXCLUDED.payload_hash,
+DO UPDATE SET -- reset record with the new payload hash and 'PROCESSING' ststus
+    payload_hash = EXCLUDED.payload_hash, -- replace the existing record's payload_hash with the payload hash from the attempted insertion
     status = 'PROCESSING',
     response_status = NULL,
     response_body = NULL,

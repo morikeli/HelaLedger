@@ -188,7 +188,7 @@ If you are running **Linux** (e.g., Ubuntu, Debian, Fedora) or a machine where D
 
 ```bash
 git clone <repository-url>
-cd helaLedger-api
+cd HelaLedger
 ```
 
 2. **Configure environment variables**

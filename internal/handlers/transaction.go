@@ -37,7 +37,7 @@ func NewTransactionHandler(service *services.TransactionService) *TransactionHan
 // @Success      201      object    responses.TransactionResponseDTO
 // @Failure      400      object    responses.ErrorResponse
 // @Failure      500      object    responses.ErrorResponse
-// @Router       /transactions [post]
+// @Router       /transfers [post]
 func (h *TransactionHandler) CreateTransactionHandler(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 

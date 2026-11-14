@@ -52,7 +52,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/transactions": {
+        "/transfers": {
             "post": {
                 "description": "Creates a new transaction record in the system",
                 "consumes": [

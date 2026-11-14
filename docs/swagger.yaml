@@ -110,7 +110,7 @@ paths:
       summary: Verify if the ledger is balanced
       tags:
       - Ledger
-  /transactions:
+  /transfers:
     post:
       consumes:
       - application/json

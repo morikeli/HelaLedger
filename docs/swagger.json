@@ -1,0 +1,327 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "API documentation for HelaPay backend services.",
+        "title": "HelaLedger API",
+        "termsOfService": "http://swagger.io/terms/",
+        "contact": {
+            "name": "API Support",
+            "email": "support@helapay.com"
+        },
+        "license": {
+            "name": "Apache 2.0",
+            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+        },
+        "version": "1.0"
+    },
+    "host": "localhost:8000",
+    "basePath": "/v1",
+    "paths": {
+        "/ledger/check-balance": {
+            "get": {
+                "description": "Verifies if all wallet balances precisely match their double-entry ledger sum postings",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Ledger"
+                ],
+                "summary": "Verify if the ledger is balanced",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/responses.LedgerStatusResponseDTO"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/transactions": {
+            "post": {
+                "description": "Creates a new transaction record in the system",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Transactions"
+                ],
+                "summary": "Create a transaction",
+                "parameters": [
+                    {
+                        "description": "Transaction Payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/requests.TransactionRequestDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/responses.TransactionResponseDTO"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/wallets/{id}/balance": {
+            "get": {
+                "description": "Retrieves the current balance, currency, and recent transactions for a given wallet ID",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Wallets"
+                ],
+                "summary": "Get wallet balance",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Wallet UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.WalletBalance"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid Wallet ID format",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Wallet not found",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/wallets/{id}/transactions": {
+            "get": {
+                "description": "Retrieves paginated posting items for a specific wallet using cursor-based pagination",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Wallets"
+                ],
+                "summary": "Get wallet transaction history",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Wallet UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "Number of transactions to return (1-100)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Pagination cursor for the next page",
+                        "name": "cursor",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/models.TransactionHistory"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid Wallet ID or limit parameter",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Wallet not found",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/responses.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "models.PostingItem": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "integer",
+                    "format": "int64"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "direction": {
+                    "type": "string"
+                },
+                "postingID": {
+                    "type": "string"
+                },
+                "transactionID": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.TransactionHistory": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.PostingItem"
+                    }
+                },
+                "nextCursor": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.WalletBalance": {
+            "type": "object",
+            "properties": {
+                "balance": {
+                    "type": "integer",
+                    "format": "int64"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "recentTransactions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.PostingItem"
+                    }
+                },
+                "walletID": {
+                    "type": "string"
+                }
+            }
+        },
+        "requests.TransactionRequestDTO": {
+            "type": "object",
+            "required": [
+                "amount",
+                "currency",
+                "destination_wallet_id",
+                "source_wallet_id"
+            ],
+            "properties": {
+                "amount": {
+                    "description": "Integer cents",
+                    "type": "integer"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "destination_wallet_id": {
+                    "type": "string"
+                },
+                "source_wallet_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "responses.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "responses.LedgerStatusResponseDTO": {
+            "type": "object",
+            "properties": {
+                "is_balanced": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "responses.TransactionResponseDTO": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "integer"
+                },
+                "currency": {
+                    "type": "string"
+                },
+                "reference_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "transaction_id": {
+                    "type": "string"
+                }
+            }
+        }
+    }
+}

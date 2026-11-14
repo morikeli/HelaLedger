@@ -1,0 +1,220 @@
+basePath: /v1
+definitions:
+  models.PostingItem:
+    properties:
+      amount:
+        format: int64
+        type: integer
+      createdAt:
+        type: string
+      direction:
+        type: string
+      postingID:
+        type: string
+      transactionID:
+        type: string
+    type: object
+  models.TransactionHistory:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/models.PostingItem'
+        type: array
+      nextCursor:
+        type: string
+    type: object
+  models.WalletBalance:
+    properties:
+      balance:
+        format: int64
+        type: integer
+      currency:
+        type: string
+      recentTransactions:
+        items:
+          $ref: '#/definitions/models.PostingItem'
+        type: array
+      walletID:
+        type: string
+    type: object
+  requests.TransactionRequestDTO:
+    properties:
+      amount:
+        description: Integer cents
+        type: integer
+      currency:
+        type: string
+      destination_wallet_id:
+        type: string
+      source_wallet_id:
+        type: string
+    required:
+    - amount
+    - currency
+    - destination_wallet_id
+    - source_wallet_id
+    type: object
+  responses.ErrorResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  responses.LedgerStatusResponseDTO:
+    properties:
+      is_balanced:
+        type: boolean
+    type: object
+  responses.TransactionResponseDTO:
+    properties:
+      amount:
+        type: integer
+      currency:
+        type: string
+      reference_id:
+        type: string
+      status:
+        type: string
+      transaction_id:
+        type: string
+    type: object
+host: localhost:8000
+info:
+  contact:
+    email: support@helapay.com
+    name: API Support
+  description: API documentation for HelaPay backend services.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: HelaLedger API
+  version: "1.0"
+paths:
+  /ledger/check-balance:
+    get:
+      consumes:
+      - application/json
+      description: Verifies if all wallet balances precisely match their double-entry
+        ledger sum postings
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/responses.LedgerStatusResponseDTO'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      summary: Verify if the ledger is balanced
+      tags:
+      - Ledger
+  /transactions:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new transaction record in the system
+      parameters:
+      - description: Transaction Payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/requests.TransactionRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/responses.TransactionResponseDTO'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      summary: Create a transaction
+      tags:
+      - Transactions
+  /wallets/{id}/balance:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves the current balance, currency, and recent transactions
+        for a given wallet ID
+      parameters:
+      - description: Wallet UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.WalletBalance'
+        "400":
+          description: Invalid Wallet ID format
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Wallet not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      summary: Get wallet balance
+      tags:
+      - Wallets
+  /wallets/{id}/transactions:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves paginated posting items for a specific wallet using cursor-based
+        pagination
+      parameters:
+      - description: Wallet UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - default: 20
+        description: Number of transactions to return (1-100)
+        in: query
+        name: limit
+        type: integer
+      - description: Pagination cursor for the next page
+        in: query
+        name: cursor
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.TransactionHistory'
+        "400":
+          description: Invalid Wallet ID or limit parameter
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "404":
+          description: Wallet not found
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/responses.ErrorResponse'
+      summary: Get wallet transaction history
+      tags:
+      - Wallets
+swagger: "2.0"

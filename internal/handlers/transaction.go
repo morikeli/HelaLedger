@@ -94,6 +94,7 @@ func (h *TransactionHandler) CreateTransactionHandler(w http.ResponseWriter, r *
 	response := responses.TransactionResponseDTO{
 		Status:        result.Status,
 		TransactionID: result.TransactionID,
+		ReferenceID:   result.ReferenceID,
 		Amount:        result.Amount,
 		Currency:      result.Currency,
 	}

@@ -1,11 +1,13 @@
 # HelaLedger API
 
 ## Overview
+
 HelaLedger is a high-concurrency, double-entry ledger and wallet transfer backend service engineered in Go. Built to guarantee strict financial integrity under heavy parallel load, HelaLedger prevents race conditions, double-spending, and floating-point precision drift across wallet transactions.
 
 Whether handling burst payment traffic or retrying dropped mobile network requests, HelaLedger enforces ACID compliance, deterministic row locking, and strict idempotency guarantees.
 
 ### Key Features
+
 - 🔒 **Double-Entry Ledger Accounting** – Every transfer generates balanced debit and credit postings inside a single atomic database transaction.
 - ⚡ **Concurrency & Race-Condition Protection** – Pessimistic row-level locking prevents negative balances during simultaneous wallet debits.
 - 🔁 **Idempotent Request Handling** – Guarantees at-most-once execution for retried transfers via `Idempotency-Key` headers and payload hashing.
@@ -13,6 +15,7 @@ Whether handling burst payment traffic or retrying dropped mobile network reques
 - 🐳 **Containerized Environment** – One-command setup with Docker Compose for both the Go API server and PostgreSQL database.
 
 ### Tech Stack
+
 - ⚙️ **Backend**: Go and Chi Router
 - 🗄️ **Database**: PostgreSQL
 - 🐳 **Containerization**: Docker & Docker Compose
@@ -21,11 +24,14 @@ Whether handling burst payment traffic or retrying dropped mobile network reques
 ### Architecture & Engineering Decisions
 
 #### Database Locking Strategy (Pessimistic Locking)
+
 HelaLedger uses **pessimistic locking (`SELECT ... FOR UPDATE`)** inside PostgreSQL transactions when executing wallet transfers:
+
 - **Why Pessimistic over Optimistic?** Under high contention on a single hot wallet (e.g., a merchant receiving or disbursing simultaneous payouts), optimistic locking causes high retry churn and wasted CPU cycles due to frequent version conflicts. Pessimistic locking serializes access at the row level, ensuring the balance check and ledger posting happen atomically without failed retries.
 - **Deadlock Prevention:** When locking multiple wallets in a single transfer (`from_wallet_id` and `to_wallet_id`), rows are always locked in **deterministic lexicographical UUID order** (`wallet_a < wallet_b`). This prevents circular wait conditions when two wallets transfer funds to each other simultaneously.
 
 #### Network Timeouts & Failure Handling
+
 - **Context Propagation & Query Timeouts:** Every incoming HTTP request binds a `context.Context` with strict deadlines passed down to the PostgreSQL driver. If a client disconnects mid-flight or a query exceeds the threshold, PostgreSQL automatically aborts and rolls back uncommitted ledger postings.
 - **Safe Client Retries:** Because mobile clients frequently experience unstable connections, clients safely retry timed-out `POST /v1/transfers` requests using the same `Idempotency-Key`. If the original transaction committed before the connection dropped, HelaLedger returns the cached `201 Created` response without re-debiting the sender. If the original request is still in-flight, the API returns `409 Conflict` / `425 Too Early` to prevent duplicate processing.
 
@@ -36,15 +42,18 @@ HelaLedger uses **pessimistic locking (`SELECT ... FOR UPDATE`)** inside Postgre
 ### API Endpoints
 
 #### 1. Create a Transfer
+
 `POST /v1/transfers`
 
 **Headers:**
+
 ```http
 Content-Type: application/json
 Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
 ```
 
 **Request Body:**
+
 ```json
 {
   "from_wallet_id": "11111111-1111-1111-1111-111111111111",
@@ -55,14 +64,17 @@ Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
 ```
 
 **Responses:**
+
 - `201 Created` – Transfer succeeded and ledger postings recorded.
 - `400 Bad Request` – Insufficient funds, invalid amount (`<= 0`), or currency mismatch.
 - `409 Conflict` – `Idempotency-Key` reused with a different request payload, or an identical request is currently in-flight.
 
 #### 2. Get Wallet Balance
+
 `GET /v1/wallets/:id/balance`
 
 **Response (`200 OK`):**
+
 ```json
 {
   "id": "11111111-1111-1111-1111-111111111111",
@@ -74,14 +86,15 @@ Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000
 ---
 
 #### 3. Get Wallet Transaction History (Paginated)
+
 `GET /v1/wallets/:id/transactions`
 
 Returns recent transaction for a wallet.
 
 **Query Parameters:**
 
-* `limit` *(optional)*: Number of items to return per page (integer between `1` and `100`, defaults to `20`).
-* `cursor` *(optional)*: Pagination cursor string for fetching subsequent pages.
+- `limit` _(optional)_: Number of items to return per page (integer between `1` and `100`, defaults to `20`).
+- `cursor` _(optional)_: Pagination cursor string for fetching subsequent pages.
 
 **Response (`200 OK`):**
 
@@ -107,6 +120,7 @@ Returns recent transaction for a wallet.
 ---
 
 #### 4. Check Ledger Double-Entry Balance
+
 `GET /v1/ledger/check-balance`
 
 Performs a system-wide accounting invariant check to verify that the sum of all debits equals credits across the double-entry ledger.
@@ -128,26 +142,31 @@ Performs a system-wide accounting invariant check to verify that the sum of all 
 #### 5. Health Check Probes
 
 ##### Liveness Probe
+
 `GET /health/live`
-* **Description:** Basic check to verify the application process is running.
-* **Response (`200 OK`):** `We are live!`
+
+- **Description:** Basic check to verify the application process is running.
+- **Response (`200 OK`):** `We are live!`
 
 ##### Readiness Probe
-`GET /health/ready`
-* **Description:** Verifies that the API server can successfully ping and communicate with the PostgreSQL database.
-* **Responses:**
-  * `200 OK`: `Ready for take off!`
-  * `503 Service Unavailable`: Database connection failed.
 
+`GET /health/ready`
+
+- **Description:** Verifies that the API server can successfully ping and communicate with the PostgreSQL database.
+- **Responses:**
+  - `200 OK`: `Ready for take off!`
+  - `503 Service Unavailable`: Database connection failed.
 
 ---
 
 ## Developer instructions
+
 ---
+
 > [!WARNING]
-> To run this project locally using Docker, you **MUST** have Docker and Docker Compose installed on your machine. 
-> 
-> * **Note on Docker Desktop:** While Docker Desktop is the standard choice for macOS and Windows Pro/Enterprise, it cannot be installed on certain systems (such as standard Linux distributions, Windows Home without WSL2, or machines lacking hardware virtualization support). If Docker Desktop is unavailable or unsupported on your system, follow the **Docker Engine** instructions below.
+> To run this project locally using Docker, you **MUST** have Docker and Docker Compose installed on your machine.
+>
+> - **Note on Docker Desktop:** While Docker Desktop is the standard choice for macOS and Windows Pro/Enterprise, it cannot be installed on certain systems (such as standard Linux distributions, Windows Home without WSL2, or machines lacking hardware virtualization support). If Docker Desktop is unavailable or unsupported on your system, follow the **Docker Engine** instructions below.
 
 ---
 
@@ -156,27 +175,31 @@ Performs a system-wide accounting invariant check to verify that the sum of all 
 Choose the installation method that matches your operating system and system capabilities:
 
 #### Option A: Docker Desktop (Recommended for macOS & Windows Pro/Enterprise)
+
 If your operating system supports it, Docker Desktop provides a complete containerization environment bundled with Docker Compose. Visit the official [Docker Get Started Guide](https://docs.docker.com/get-docker/).
 
 #### Option B: Docker Engine & Compose (For Linux or Machines Without Docker Desktop Support)
-If you are running **Linux** (e.g., Ubuntu, Debian, Fedora) or a machine where Docker Desktop is not supported, you can install the lightweight **Docker Engine** and **Docker Compose plugin** directly. Follow the official distribution-specific guide to install Docker Engine: [Install Docker Engine Guide](https://docs.docker.com/engine/install/).
 
+If you are running **Linux** (e.g., Ubuntu, Debian, Fedora) or a machine where Docker Desktop is not supported, you can install the lightweight **Docker Engine** and **Docker Compose plugin** directly. Follow the official distribution-specific guide to install Docker Engine: [Install Docker Engine Guide](https://docs.docker.com/engine/install/).
 
 ### Step 2: Local Setup
 
 1. **Clone the repository**
+
 ```bash
 git clone <repository-url>
 cd helaLedger-api
 ```
 
 2. **Configure environment variables**
-Copy the example environment file and verify database credentials:
+   Copy the example environment file and verify database credentials:
+
 ```bash
 cp .env.example .env
 ```
 
 This is the default database url for the dev environment
+
 ```env
 # Replace the values in < > with your actual credentials. Don't include the angle brackets in the DATABASE_URL in your .env file
 DATABASE_URL=postgres://<db-user>:<db-password>@<db-host>:<db-port>/<db-name>?sslmode=disable
@@ -185,34 +208,39 @@ DATABASE_URL=postgres://<db-user>:<db-password>@<db-host>:<db-port>/<db-name>?ss
 > [!NOTE]
 > The DATABASE_URL relies on the exact service name postgres defined in docker-compose.yaml as the host so the API container can successfully connect to the database container within the Docker network.
 
-
 3. **Start services via Docker Compose**
+
 ```bash
 docker compose up --build -d
 ```
+
 The API will be available at `http://localhost:8000`.
 
 > [!NOTE]
 > To delete the db, images or containers use:
+>
 > ```bash
 > docker compose down -v
 > ```
 >
 > Rebuild and start the service again using
+>
 > ```bash
 > docker compose up --build
 > ```
 
-
 ### Step 3: Running Tests
 
 #### 1. Unit Tests
+
 Unit tests mock external dependencies and do not require a running database. To run only the unit tests across internal packages with the race detector enabled:
+
 ```bash
 go test -v -race ./internal/...
 ```
 
 #### 2. Integration Tests & Test Database Setup
+
 The integration tests (`./tests/integration`) validate database row-locking, concurrency, and idempotency against a real PostgreSQL instance.
 
 1. **Create the isolated test database**
@@ -221,37 +249,42 @@ The integration tests (`./tests/integration`) validate database row-locking, con
    docker exec -it helapay_api_db createdb -U <db-user> helapay_test
    ```
 
-  > [!TIP]
-  > If you aren't sure which user your container was initialized with, check `POSTGRES_USER` in your `.env` file or run:
-  > ```bash
-  > docker inspect helapay_api_db --format='{{json .Config.Env}}'
-  > ```
+> [!TIP]
+> If you aren't sure which user your container was initialized with, check `POSTGRES_USER` in your `.env` file or run:
+>
+> ```bash
+> docker inspect helapay_api_db --format='{{json .Config.Env}}'
+> ```
 
 2. **Export the test database connection URL**
    In the terminal session where you plan to run the tests, export `HELAPAY_TEST_DATABASE_URL` pointing to `localhost:5432`:
+
    ```bash
    export HELAPAY_TEST_DATABASE_URL='postgres://<db-user>:<db-password>@localhost:5432/helapay_test?sslmode=disable'
    ```
 
 3. **Run the integration tests**
    1. Execute the integration suite with the Go race detector enabled:
+
    ```bash
    go test -v -race ./tests/integration
    ```
 
    2. Run the integration tests repeatedly to help expose flaky concurrency behaviour:
+
    ```bash
    go test -v -count=10 ./tests/integration
    ```
 
 4. **Run the unit tests**
-Run unit test via this command.
+   Run unit test via this command.
+
 ```bash
 go test -v ./internal/handlers ./internal/services
 ```
 
 5. **Run the full test suite (Unit + Integration)**
-Once `HELAPAY_TEST_DATABASE_URL` is exported, you can run every test in the repository at once:
+   Once `HELAPAY_TEST_DATABASE_URL` is exported, you can run every test in the repository at once:
    ```bash
    go test -v ./...
    ```
@@ -259,7 +292,9 @@ Once `HELAPAY_TEST_DATABASE_URL` is exported, you can run every test in the repo
 ---
 
 ## Contributions
+
 Contributions are welcome! To contribute to HelaLedger:
+
 1. Fork the repository and create a feature branch:
    ```bash
    git checkout -b feature/your-feature-name
@@ -270,5 +305,6 @@ Contributions are welcome! To contribute to HelaLedger:
 ---
 
 ## Known Issues
+
 1. **Single-Currency Transfers Only**: Cross-currency FX conversion between wallets with differing base currencies is not yet supported; transfers currently require matching source and destination currencies.
 2. **In-Memory / DB Idempotency Cleanup**: Expired idempotency keys are retained indefinitely in PostgreSQL and currently require a scheduled background cleanup worker (TTL pruning) for long-term production scale.

@@ -3,6 +3,7 @@ package repository
 import "errors"
 
 var (
+	ErrInvalidIdempotencyKeyFormat = errors.New("Invalid idempotency key format! Provide valid uuid.")
 	ErrIdempotencyConflict = errors.New("Idempotency key was used with a different payload!")
 	ErrRequestInProgress   = errors.New("Request with this idempotency key is still processing!")
 	ErrWalletNotFound      = errors.New("Wallet not found!")

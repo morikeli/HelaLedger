@@ -30,6 +30,8 @@ func handleServiceError(w http.ResponseWriter, err error) {
 	case errors.Is(err, repository.ErrRequestInProgress):
 		w.Header().Set("Retry-After", "1")
 		responses.Error(w, http.StatusTooEarly, err.Error())
+	case errors.Is(err, repository.ErrInvalidIdempotencyKeyFormat):
+		responses.Error(w, http.StatusBadRequest, err.Error())
 	default:
 		responses.Error(w, http.StatusInternalServerError, "an unexpected error occurred")
 	}

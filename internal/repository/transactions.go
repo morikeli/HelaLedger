@@ -95,7 +95,7 @@ func (r *PostgresTransactionRepository) MakeTransaction(ctx context.Context, txn
 	// parse idempotency string into pgtype.UUID
 	idempotencyUUID, err := parseUUID(txnParams.IdempotencyKey)
 	if err != nil {
-		return nil, false, fmt.Errorf("invalid idempotency key format: %w", err)
+		return nil, false, ErrInvalidIdempotencyKeyFormat
 	}
 
 	hash, err := hashutil.HashPayload(txnParams)

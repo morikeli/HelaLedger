@@ -24,9 +24,32 @@ HAVING w.balance <> COALESCE(SUM(CASE WHEN p.direction='CREDIT' THEN p.amount EL
 DELETE FROM idempotency_keys WHERE expires_at < NOW() AND status <> 'PROCESSING';
 
 -- name: ClaimIdempotencyKey :execrows
-INSERT INTO idempotency_keys (idempotency_key, payload_hash, status)
-VALUES ($1, $2, 'PROCESSING')
-ON CONFLICT (idempotency_key) DO NOTHING;
+INSERT INTO idempotency_keys (
+    idempotency_key,
+    payload_hash,
+    status,
+    created_at,
+    updated_at,
+    expires_at
+)
+VALUES (
+    $1,
+    $2,
+    'PROCESSING',
+    NOW(),
+    NOW(),
+    NOW() + INTERVAL '24 hours'
+)
+ON CONFLICT (idempotency_key)
+DO UPDATE SET
+    payload_hash = EXCLUDED.payload_hash,
+    status = 'PROCESSING',
+    response_status = NULL,
+    response_body = NULL,
+    created_at = NOW(),
+    updated_at = NOW(),
+    expires_at = NOW() + INTERVAL '24 hours'
+WHERE idempotency_keys.expires_at <= NOW();
 
 -- name: GetIdempotencyKey :one
 SELECT payload_hash, status, response_status, response_body

@@ -267,13 +267,18 @@ func (r *PostgresTransactionRepository) MakeTransaction(ctx context.Context, txn
 		Valid: true,
 	}
 
-	err = qtx.CompleteIdempotencyKey(ctx, store.CompleteIdempotencyKeyParams{
-		ResponseStatus: respStatus,
-		ResponseBody:   responseBody,
-		IdempotencyKey: idempotencyUUID,
-	})
+	rowsAffected, err = qtx.CompleteIdempotencyKey(ctx, store.CompleteIdempotencyKeyParams{
+			ResponseStatus: respStatus,
+			ResponseBody:   responseBody,
+			IdempotencyKey: idempotencyUUID,
+		},
+	)
 	if err != nil {
-		return nil, false, fmt.Errorf("complete idempotency record: %w", err)
+		return nil, false, fmt.Errorf("complete idempotency key: %w", err)
+	}
+
+	if rowsAffected != 1 {
+		return nil, false, errors.New("failed to complete idempotency record")
 	}
 
 	// Commit transaction atomically.

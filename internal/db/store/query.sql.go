@@ -59,10 +59,10 @@ func (q *Queries) ClaimIdempotencyKey(ctx context.Context, arg ClaimIdempotencyK
 	return result.RowsAffected(), nil
 }
 
-const completeIdempotencyKey = `-- name: CompleteIdempotencyKey :exec
+const completeIdempotencyKey = `-- name: CompleteIdempotencyKey :execrows
 UPDATE idempotency_keys
 SET status = 'COMPLETED', response_status = $1, response_body = $2, updated_at = NOW()
-WHERE idempotency_key = $3
+WHERE idempotency_key = $3 AND status = 'PROCESSING'
 `
 
 type CompleteIdempotencyKeyParams struct {
@@ -71,9 +71,12 @@ type CompleteIdempotencyKeyParams struct {
 	IdempotencyKey pgtype.UUID
 }
 
-func (q *Queries) CompleteIdempotencyKey(ctx context.Context, arg CompleteIdempotencyKeyParams) error {
-	_, err := q.db.Exec(ctx, completeIdempotencyKey, arg.ResponseStatus, arg.ResponseBody, arg.IdempotencyKey)
-	return err
+func (q *Queries) CompleteIdempotencyKey(ctx context.Context, arg CompleteIdempotencyKeyParams) (int64, error) {
+	result, err := q.db.Exec(ctx, completeIdempotencyKey, arg.ResponseStatus, arg.ResponseBody, arg.IdempotencyKey)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const createTransferPostings = `-- name: CreateTransferPostings :exec

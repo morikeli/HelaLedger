@@ -61,10 +61,10 @@ WHERE idempotency_keys.expires_at <= NOW();
 SELECT payload_hash, status, response_status, response_body
 FROM idempotency_keys WHERE idempotency_key = $1;
 
--- name: CompleteIdempotencyKey :exec
+-- name: CompleteIdempotencyKey :execrows
 UPDATE idempotency_keys
 SET status = 'COMPLETED', response_status = $1, response_body = $2, updated_at = NOW()
-WHERE idempotency_key = $3;
+WHERE idempotency_key = $3 AND status = 'PROCESSING'; -- prevent an already-completed record from being overwritten
 
 -- name: LockTransferWallets :many
 SELECT id::text, currency, balance, status

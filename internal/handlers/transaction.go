@@ -33,6 +33,7 @@ func NewTransactionHandler(service *services.TransactionService) *TransactionHan
 // @Tags         Transactions
 // @Accept       json
 // @Produce      json
+// @Param        Idempotency-Key  header   string  true  "Idempotency Key for request deduplication"
 // @Param        request  body      requests.TransactionRequestDTO  true  "Transaction Payload"
 // @Success      201      object    responses.TransactionResponseDTO
 // @Failure      400      object    responses.ErrorResponse

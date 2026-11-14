@@ -67,6 +67,13 @@ const docTemplate = `{
                 "summary": "Create a transaction",
                 "parameters": [
                     {
+                        "type": "string",
+                        "description": "Idempotency Key for request deduplication",
+                        "name": "Idempotency-Key",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
                         "description": "Transaction Payload",
                         "name": "request",
                         "in": "body",

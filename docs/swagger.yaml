@@ -116,6 +116,11 @@ paths:
       - application/json
       description: Creates a new transaction record in the system
       parameters:
+      - description: Idempotency Key for request deduplication
+        in: header
+        name: Idempotency-Key
+        required: true
+        type: string
       - description: Transaction Payload
         in: body
         name: request

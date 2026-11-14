@@ -187,6 +187,11 @@ func (r *PostgresTransactionRepository) MakeTransaction(ctx context.Context, txn
 		return nil, false, fmt.Errorf("lock transfer wallets: %w", err)
 	}
 
+	// Explicitly verify that both wallets were found and locked before proceeding
+	if len(lockedWallets) != 2 {
+		return nil, false, ErrWalletNotFound
+	}
+
 	walletsMap := make(map[string]store.LockTransferWalletsRow, len(lockedWallets))
 	for _, w := range lockedWallets {
 		walletsMap[w.ID] = w

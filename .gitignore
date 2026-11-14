@@ -1,0 +1,21 @@
+# Environment variables
+.env
+
+# Explicitly track the example file
+!.env.example
+
+# Air live reload
+tmp/
+build-errors.log
+
+# Go build artifacts
+*.exe
+*.test
+*.out
+
+# IDE/editor
+.idea/
+.vscode/
+
+# OS files
+.DS_Store

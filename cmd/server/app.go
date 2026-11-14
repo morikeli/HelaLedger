@@ -14,12 +14,14 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
+	_ "github.com/morikeli/helapay-api/docs"
 	"github.com/morikeli/helapay-api/internal/config"
 	"github.com/morikeli/helapay-api/internal/db"
 	"github.com/morikeli/helapay-api/internal/dtos/responses"
 	"github.com/morikeli/helapay-api/internal/handlers"
 	"github.com/morikeli/helapay-api/internal/repository"
 	"github.com/morikeli/helapay-api/internal/services"
+	swaggerDocs "github.com/swaggo/http-swagger/v2"
 )
 
 type App struct {
@@ -55,6 +57,11 @@ func NewApp(cfg *config.Config) (*App, error) {
 	r.Use(middleware.Timeout(60 * time.Second))
 
 	// handlers
+
+	// Register the Swagger UI handler on a wildcard path
+	r.Get("/swagger/*", swaggerDocs.Handler(
+		swaggerDocs.URL(fmt.Sprintf("http://localhost:%s/swagger/doc.json", cfg.ServerPort)),
+	))
 
 	// HealthCheck handles the basic liveness probe
 	// @Summary      Liveness probe

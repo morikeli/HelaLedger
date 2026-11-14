@@ -10,6 +10,20 @@ FROM wallets WHERE id=$1;
 SELECT id, transaction_id, wallet_id, amount, direction, created_at
 FROM postings WHERE wallet_id=$1 ORDER BY created_at DESC, id DESC LIMIT $2;
 
+-- name: ListPostingsByWalletIDCursor :many
+SELECT id, transaction_id, wallet_id, amount, direction, created_at
+FROM postings
+WHERE wallet_id = sqlc.arg(wallet_id)
+  AND (
+      NOT sqlc.arg(has_cursor)::boolean
+      OR (created_at, id) < (
+          sqlc.narg(cursor_created_at)::timestamptz,
+          sqlc.narg(cursor_posting_id)::uuid
+      )
+  )
+ORDER BY created_at DESC, id DESC
+LIMIT sqlc.arg(page_limit);
+
 -- name: ReconcileWalletBalances :many
 SELECT w.id, w.balance,
        COALESCE(SUM(CASE WHEN p.direction='CREDIT' THEN p.amount ELSE -p.amount END), 0)::BIGINT AS ledger_balance

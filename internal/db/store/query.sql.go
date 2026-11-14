@@ -283,6 +283,62 @@ func (q *Queries) ListPostingsByWalletID(ctx context.Context, arg ListPostingsBy
 	return items, nil
 }
 
+const listPostingsByWalletIDCursor = `-- name: ListPostingsByWalletIDCursor :many
+SELECT id, transaction_id, wallet_id, amount, direction, created_at
+FROM postings
+WHERE wallet_id = $1
+  AND (
+      NOT $2::boolean
+      OR (created_at, id) < (
+          $3::timestamptz,
+          $4::uuid
+      )
+  )
+ORDER BY created_at DESC, id DESC
+LIMIT $5
+`
+
+type ListPostingsByWalletIDCursorParams struct {
+	WalletID        pgtype.UUID
+	HasCursor       bool
+	CursorCreatedAt pgtype.Timestamptz
+	CursorPostingID pgtype.UUID
+	PageLimit       int32
+}
+
+func (q *Queries) ListPostingsByWalletIDCursor(ctx context.Context, arg ListPostingsByWalletIDCursorParams) ([]Posting, error) {
+	rows, err := q.db.Query(ctx, listPostingsByWalletIDCursor,
+		arg.WalletID,
+		arg.HasCursor,
+		arg.CursorCreatedAt,
+		arg.CursorPostingID,
+		arg.PageLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Posting{}
+	for rows.Next() {
+		var i Posting
+		if err := rows.Scan(
+			&i.ID,
+			&i.TransactionID,
+			&i.WalletID,
+			&i.Amount,
+			&i.Direction,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockTransferWallets = `-- name: LockTransferWallets :many
 
 SELECT id::text, currency, balance, status

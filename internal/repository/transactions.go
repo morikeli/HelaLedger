@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -37,6 +38,47 @@ func parseUUID(s string) (pgtype.UUID, error) {
 	var u pgtype.UUID
 	err := u.Scan(s)
 	return u, err
+}
+
+type postingCursor struct {
+	CreatedAt time.Time `json:"created_at"`
+	PostingID string    `json:"posting_id"`
+}
+
+func decodePostingCursor(raw string) (postingCursor, pgtype.UUID, error) {
+	var cursor postingCursor
+	var postingID pgtype.UUID
+
+	if raw == "" {
+		return cursor, postingID, nil
+	}
+
+	decoded, err := base64.RawURLEncoding.DecodeString(raw)
+	if err != nil {
+		return cursor, postingID, ErrInvalidCursor
+	}
+	if err := json.Unmarshal(decoded, &cursor); err != nil {
+		return cursor, postingID, ErrInvalidCursor
+	}
+	if cursor.CreatedAt.IsZero() || cursor.PostingID == "" {
+		return cursor, postingID, ErrInvalidCursor
+	}
+	if err := postingID.Scan(cursor.PostingID); err != nil {
+		return cursor, postingID, ErrInvalidCursor
+	}
+
+	return cursor, postingID, nil
+}
+
+func encodePostingCursor(item store.Posting) (string, error) {
+	payload, err := json.Marshal(postingCursor{
+		CreatedAt: item.CreatedAt.Time.UTC(),
+		PostingID: item.ID.String(),
+	})
+	if err != nil {
+		return "", fmt.Errorf("marshal pagination cursor: %w", err)
+	}
+	return base64.RawURLEncoding.EncodeToString(payload), nil
 }
 
 func (r *PostgresTransactionRepository) MakeTransaction(ctx context.Context, txnParams models.TransactionParams) (*models.TransactionResults, bool, error) {
@@ -375,17 +417,30 @@ func (r *PostgresTransactionRepository) CheckLedgerBalance(ctx context.Context) 
 	return len(unbalancedWallets) == 0, nil
 }
 
-func listWalletTransactions(ctx context.Context, q *store.Queries, walletID pgtype.UUID, limit int, cursor string) (*models.TransactionHistory, error) {
+func listWalletTransactions(ctx context.Context, q *store.Queries, walletID pgtype.UUID, limit int, rawCursor string) (*models.TransactionHistory, error) {
 	if limit < 1 || limit > 100 {
 		limit = 20
 	}
 
-	postings, err := q.ListPostingsByWalletID(ctx, store.ListPostingsByWalletIDParams{
-		WalletID: walletID,
-		Limit:    int32(limit),
+	cursor, postingID, err := decodePostingCursor(rawCursor)
+	if err != nil {
+		return nil, err
+	}
+
+	postings, err := q.ListPostingsByWalletIDCursor(ctx, store.ListPostingsByWalletIDCursorParams{
+		WalletID:        walletID,
+		HasCursor:       rawCursor != "",
+		CursorCreatedAt: pgtype.Timestamptz{Time: cursor.CreatedAt, Valid: rawCursor != ""},
+		CursorPostingID: postingID,
+		PageLimit:       int32(limit + 1),
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	hasMore := len(postings) > limit
+	if hasMore {
+		postings = postings[:limit]
 	}
 
 	result := &models.TransactionHistory{
@@ -403,6 +458,14 @@ func listWalletTransactions(ctx context.Context, q *store.Queries, walletID pgty
 			Direction:     item.Direction,
 			CreatedAt:     item.CreatedAt.Time.UTC().Format(time.RFC3339Nano),
 		})
+	}
+
+	if hasMore && len(postings) > 0 {
+		nextCursor, err := encodePostingCursor(postings[len(postings)-1])
+		if err != nil {
+			return nil, err
+		}
+		result.NextCursor = nextCursor
 	}
 
 	return result, nil

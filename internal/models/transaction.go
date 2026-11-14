@@ -14,6 +14,7 @@ type TransactionResults struct {
 	ReferenceID   string
 	Amount        int64
 	Currency      string
+	HTTPStatus    int // HTTP status associated with the original transaction response.
 }
 
 type TransactionHistory struct {

@@ -13,7 +13,7 @@ FROM postings WHERE wallet_id=$1 ORDER BY created_at DESC, id DESC LIMIT $2;
 -- name: ReconcileWalletBalances :many
 SELECT w.id, w.balance,
        COALESCE(SUM(CASE WHEN p.direction='CREDIT' THEN p.amount ELSE -p.amount END), 0)::BIGINT AS ledger_balance
-FROM wallets w 
+FROM wallets w
 LEFT JOIN postings p ON p.wallet_id = w.id
 GROUP BY w.id, w.balance
 HAVING w.balance <> COALESCE(SUM(CASE WHEN p.direction='CREDIT' THEN p.amount ELSE -p.amount END), 0);
@@ -79,7 +79,7 @@ UPDATE wallets SET balance = balance - $1, updated_at = NOW()
 WHERE id = $2 AND balance >= $1;
 
 -- name: CreditWallet :execrows
-UPDATE wallets SET balance = balance + $1, updated_at = NOW() 
+UPDATE wallets SET balance = balance + $1, updated_at = NOW()
 WHERE id = $2;
 
 -- name: CreateTransferPostings :exec

@@ -120,7 +120,7 @@ func (q *Queries) CreateTransferTransaction(ctx context.Context, arg CreateTrans
 }
 
 const creditWallet = `-- name: CreditWallet :execrows
-UPDATE wallets SET balance = balance + $1, updated_at = NOW() 
+UPDATE wallets SET balance = balance + $1, updated_at = NOW()
 WHERE id = $2
 `
 
@@ -284,6 +284,7 @@ func (q *Queries) ListPostingsByWalletID(ctx context.Context, arg ListPostingsBy
 }
 
 const lockTransferWallets = `-- name: LockTransferWallets :many
+
 SELECT id::text, currency, balance, status
 FROM wallets WHERE id IN ($1::uuid, $2::uuid) ORDER BY id FOR UPDATE
 `
@@ -300,6 +301,7 @@ type LockTransferWalletsRow struct {
 	Status   string
 }
 
+// prevent an already-completed record from being overwritten
 func (q *Queries) LockTransferWallets(ctx context.Context, arg LockTransferWalletsParams) ([]LockTransferWalletsRow, error) {
 	rows, err := q.db.Query(ctx, lockTransferWallets, arg.Column1, arg.Column2)
 	if err != nil {
@@ -328,7 +330,7 @@ func (q *Queries) LockTransferWallets(ctx context.Context, arg LockTransferWalle
 const reconcileWalletBalances = `-- name: ReconcileWalletBalances :many
 SELECT w.id, w.balance,
        COALESCE(SUM(CASE WHEN p.direction='CREDIT' THEN p.amount ELSE -p.amount END), 0)::BIGINT AS ledger_balance
-FROM wallets w 
+FROM wallets w
 LEFT JOIN postings p ON p.wallet_id = w.id
 GROUP BY w.id, w.balance
 HAVING w.balance <> COALESCE(SUM(CASE WHEN p.direction='CREDIT' THEN p.amount ELSE -p.amount END), 0)

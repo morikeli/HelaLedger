@@ -12,9 +12,32 @@ import (
 )
 
 const claimIdempotencyKey = `-- name: ClaimIdempotencyKey :execrows
-INSERT INTO idempotency_keys (idempotency_key, payload_hash, status)
-VALUES ($1, $2, 'PROCESSING')
-ON CONFLICT (idempotency_key) DO NOTHING
+INSERT INTO idempotency_keys (
+    idempotency_key,
+    payload_hash,
+    status,
+    created_at,
+    updated_at,
+    expires_at
+)
+VALUES (
+    $1,
+    $2,
+    'PROCESSING',
+    NOW(),
+    NOW(),
+    NOW() + INTERVAL '24 hours'
+)
+ON CONFLICT (idempotency_key)
+DO UPDATE SET -- reset record with the new payload hash and 'PROCESSING' ststus
+    payload_hash = EXCLUDED.payload_hash, -- replace the existing record's payload_hash with the payload hash from the attempted insertion
+    status = 'PROCESSING',
+    response_status = NULL,
+    response_body = NULL,
+    created_at = NOW(),
+    updated_at = NOW(),
+    expires_at = NOW() + INTERVAL '24 hours'
+WHERE idempotency_keys.expires_at <= NOW()
 `
 
 type ClaimIdempotencyKeyParams struct {
@@ -22,6 +45,12 @@ type ClaimIdempotencyKeyParams struct {
 	PayloadHash    string
 }
 
+// Keep claim operation atomic
+// New key -> inserted and claimed
+// Existing, unexpired key -> not modified
+// existing, expired key -> reset and claimed
+// Incase there are concurrent request using the same active key -> wait for the first request,
+// then either its completed record or times out
 func (q *Queries) ClaimIdempotencyKey(ctx context.Context, arg ClaimIdempotencyKeyParams) (int64, error) {
 	result, err := q.db.Exec(ctx, claimIdempotencyKey, arg.IdempotencyKey, arg.PayloadHash)
 	if err != nil {

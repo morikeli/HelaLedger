@@ -316,10 +316,10 @@ func (r *PostgresTransactionRepository) MakeTransaction(ctx context.Context, txn
 	}
 
 	rowsAffected, err = qtx.CompleteIdempotencyKey(ctx, store.CompleteIdempotencyKeyParams{
-			ResponseStatus: respStatus,
-			ResponseBody:   responseBody,
-			IdempotencyKey: idempotencyUUID,
-		},
+		ResponseStatus: respStatus,
+		ResponseBody:   responseBody,
+		IdempotencyKey: idempotencyUUID,
+	},
 	)
 	if err != nil {
 		return nil, false, fmt.Errorf("complete idempotency key: %w", err)

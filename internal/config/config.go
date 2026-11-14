@@ -18,7 +18,7 @@ type Config struct {
 
 func LoadConfig() (*Config, error) {
 	if err := godotenv.Load(); err != nil {
-		return nil, fmt.Errorf("Can't get environment variables \n%v")
+		return nil, fmt.Errorf("Can't get environment variables \n%v", err)
 	}
 
 	config := &Config{

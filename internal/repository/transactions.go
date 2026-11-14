@@ -300,6 +300,7 @@ func (r *PostgresTransactionRepository) MakeTransaction(ctx context.Context, txn
 		ReferenceID:   referenceID,
 		Amount:        txnParams.Amount,
 		Currency:      txnParams.Currency,
+		HTTPStatus:    http.StatusCreated,
 	}
 
 	// Serialize the domain result for idempotency persistence.

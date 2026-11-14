@@ -100,9 +100,10 @@ func (h *TransactionHandler) CreateTransactionHandler(w http.ResponseWriter, r *
 	}
 
 	slog.Info("wallet transfer completed", "request_id", chiMW.GetReqID(r.Context()), "transaction_id", result.TransactionID, "reference_id", result.ReferenceID, "amount_minor", result.Amount, "currency", result.Currency, "replayed", isReplay)
-	statusCode := http.StatusCreated
-	if isReplay {
-		statusCode = http.StatusOK
+	statusCode := result.HTTPStatus
+	// Defensive fallback for results created before HTTPStatus was populated.
+	if statusCode == 0 {
+		statusCode = http.StatusCreated
 	}
 
 	responses.Success(w, statusCode, "Cash transacted successfully!", response)

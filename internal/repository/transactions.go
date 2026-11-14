@@ -154,6 +154,16 @@ func (r *PostgresTransactionRepository) MakeTransaction(ctx context.Context, txn
 			return nil, false, fmt.Errorf("decode cached response: %w", err)
 		}
 
+		// Retrieve the original HTTP response status.
+		cachedStatus := int(existing.ResponseStatus.Int32)
+
+		// Only accept the HTTP statuses supported by this endpoint.
+		if cachedStatus != http.StatusOK && cachedStatus != http.StatusCreated {
+			return nil, false, fmt.Errorf("invalid cached HTTP response status: %d", cachedStatus)
+		}
+
+		cachedResponse.HTTPStatus = cachedStatus
+
 		if err := tx.Commit(ctx); err != nil {
 			return nil, false, fmt.Errorf("commit replay transaction: %w", err)
 		}

@@ -99,7 +99,22 @@ func (h *TransactionHandler) CreateTransactionHandler(w http.ResponseWriter, r *
 		Currency:      result.Currency,
 	}
 
-	slog.Info("wallet transfer completed", "request_id", chiMW.GetReqID(r.Context()), "transaction_id", result.TransactionID, "reference_id", result.ReferenceID, "amount_minor", result.Amount, "currency", result.Currency, "replayed", isReplay)
+	slog.Info(
+		"wallet transfer completed",
+		"request_id",
+		chiMW.GetReqID(r.Context()),
+		"transaction_id",
+		result.TransactionID,
+		"reference_id",
+		result.ReferenceID,
+		"amount_minor",
+		result.Amount,
+		"currency",
+		result.Currency,
+		"replayed",
+		isReplay,
+	)
+
 	statusCode := result.HTTPStatus
 	// Defensive fallback for results created before HTTPStatus was populated.
 	if statusCode == 0 {

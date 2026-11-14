@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"net/http"
 	"sort"
 	"time"
 	"uuid"
@@ -321,7 +322,7 @@ func (r *PostgresTransactionRepository) MakeTransaction(ctx context.Context, txn
 
 	// Complete idempotency record.
 	respStatus := pgtype.Int4{
-		Int32: 201,
+		Int32: http.StatusCreated,
 		Valid: true,
 	}
 

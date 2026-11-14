@@ -300,9 +300,11 @@ Contributions are welcome! To contribute to HelaLedger:
    git checkout -b feature/your-feature-name
    ```
 2. Format your Go code using `gofmt` (or `go fmt`) before committing:
+
 ```bash
 go fmt ./...
 ```
+
 3. Ensure all existing and new tests pass with `go test -race ./...`.
 4. Submit a Pull Request detailing your changes and architectural rationale.
 
